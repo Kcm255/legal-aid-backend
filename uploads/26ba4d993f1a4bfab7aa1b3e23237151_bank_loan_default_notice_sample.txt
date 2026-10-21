@@ -1,0 +1,68 @@
+TITLE: Sample Bank Notice — Loan Default / Demand Notice under SARFAESI Act
+CATEGORY: Banking Notices
+DOCUMENT TYPE: Demand Notice (Section 13(2), SARFAESI Act, 2002)
+LANGUAGE: English
+
+--------------------------------------------------------------------
+[BANK LETTERHEAD — SAMPLE / PLACEHOLDER]
+Branch: Sample Branch, Rural District
+Ref No.: SAMPLE/RECOVERY/2026/000-XXX
+Date: [DD/MM/YYYY]
+
+--------------------------------------------------------------------
+To,
+[Borrower Name]
+[Borrower Address]
+
+Subject: Notice under Section 13(2) of the Securitisation and
+Reconstruction of Financial Assets and Enforcement of Security
+Interest (SARFAESI) Act, 2002
+
+--------------------------------------------------------------------
+BODY (SAMPLE LANGUAGE):
+
+Dear Sir/Madam,
+
+This is to inform you that you had availed a loan facility of
+Rs. [amount] from this Bank vide Loan Account No. [XXXXXXXX], secured
+by [type of security, e.g., mortgage of agricultural land / hypothecation
+of equipment].
+
+As per our records, your loan account has been classified as a
+Non-Performing Asset (NPA) as on [date], since installments due have
+not been paid despite reminders. As on the date of this notice, a sum
+of Rs. [outstanding amount] (Rupees [amount in words] only), together
+with further interest, is due and payable by you.
+
+You are hereby called upon to pay the said outstanding amount in full
+within 60 (sixty) days from the date of receipt of this notice,
+failing which the Bank shall be entitled to exercise rights under
+Section 13(4) of the SARFAESI Act, 2002, including taking possession
+of the secured asset, without intervention of any court or tribunal.
+
+You are further informed that you have the right to raise a
+representation or objection to this notice, along with reasons,
+within the notice period. The Bank is obligated to consider such
+representation and communicate the reasons for non-acceptance, if any,
+within 15 days.
+
+--------------------------------------------------------------------
+KEY TERMS EXPLAINED (for reference/extraction):
+- "NPA" — Non-Performing Asset: a loan account where repayment has
+  been overdue for a specified period (commonly 90 days).
+- "Section 13(2) Notice" — a mandatory 60-day demand notice a bank
+  must issue before taking possession of secured property.
+- "Section 13(4)" — allows the bank to take possession/sale of the
+  secured asset if dues remain unpaid after the notice period.
+- Borrower's remedy: an application (not technically an "appeal", but
+  functions like one) lies before the Debts Recovery Tribunal (DRT)
+  under Section 17 of the Act, within 45 days of the Section 13(4)
+  enforcement action being taken.
+
+--------------------------------------------------------------------
+DISCLAIMER
+This is a SAMPLE/PLACEHOLDER document created for knowledge-base
+seeding and testing purposes only. It does not represent any real
+bank, borrower, or transaction. Actual notices vary by bank and case;
+recipients of a real notice should consult a lawyer or a District
+Legal Services Authority (DLSA) for free legal aid.
