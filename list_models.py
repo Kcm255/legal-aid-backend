@@ -1,10 +1,14 @@
-import os
-from dotenv import load_dotenv
-from google import genai
+import sys
+from pathlib import Path
 
-load_dotenv()
+import requests
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+sys.path.insert(0, str(Path(__file__).parent))
+from config import LLM_BASE_URL
 
-for model in client.models.list():
-    print(model.name)
+base_url = LLM_BASE_URL.split("/v1", 1)[0].rstrip("/")
+response = requests.get(f"{base_url}/api/tags", timeout=10)
+response.raise_for_status()
+
+for model in response.json().get("models", []):
+    print(model.get("name", "<unnamed>"))

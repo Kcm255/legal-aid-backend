@@ -75,28 +75,23 @@ check("pdf2image", check_pdf2image)
 # ── AI & RAG ──────────────────────────────────────────────────────────────────
 print("\n[3] AI & RAG")
 
-check("google-generativeai", lambda: __import__("google.generativeai") and "✅ OK")
 check("fastembed", lambda: __import__("fastembed") and "✅ OK")
 check("chromadb", lambda: __import__("chromadb") and "✅ OK")
 check("rank-bm25", lambda: __import__("rank_bm25") and "✅ OK")
 
 # ── Audio ─────────────────────────────────────────────────────────────────────
 print("\n[4] Audio")
-check("gTTS", lambda: __import__("gtts") and "✅ OK")
+check("pyttsx3", lambda: __import__("pyttsx3") and "✅ OK")
 
 # ── Config & env ──────────────────────────────────────────────────────────────
 print("\n[5] Configuration")
 
-def check_gemini_key():
-    from config import GEMINI_API_KEY
-    if not GEMINI_API_KEY:
-        warnings.append("GEMINI_API_KEY is not set in .env")
-        return "⚠️  Not set (add to .env)"
-    if GEMINI_API_KEY == "your_gemini_api_key_here":
-        warnings.append("GEMINI_API_KEY still has placeholder value")
-        return "⚠️  Still placeholder"
-    return f"✅ Set ({GEMINI_API_KEY[:8]}…)"
-check("GEMINI_API_KEY", check_gemini_key)
+def check_llm_config():
+    from config import LLM_PROVIDER, LLM_MODEL, LLM_BASE_URL
+    if LLM_PROVIDER != "ollama":
+        return f"⚠️  Unsupported provider: {LLM_PROVIDER}"
+    return f"✅ {LLM_MODEL} at {LLM_BASE_URL}"
+check("Ollama LLM configuration", check_llm_config)
 
 def check_dirs():
     from config import UPLOAD_DIR, AUDIO_DIR, CHROMA_DIR, DOCS_DIR
@@ -138,7 +133,7 @@ check("database.db", lambda: __import__("database.db") and "✅ OK")
 check("extraction.extractor", lambda: __import__("extraction.extractor") and "✅ OK")
 check("rag.embed", lambda: __import__("rag.embed") and "✅ OK")
 check("rag.retrieve", lambda: __import__("rag.retrieve") and "✅ OK")
-check("ai.gemini", lambda: __import__("ai.gemini") and "✅ OK")
+check("ai.llm", lambda: __import__("ai.llm") and "✅ OK")
 check("ai.prompts", lambda: __import__("ai.prompts") and "✅ OK")
 check("ai.processor", lambda: __import__("ai.processor") and "✅ OK")
 check("audio.tts", lambda: __import__("audio.tts") and "✅ OK")

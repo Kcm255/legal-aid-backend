@@ -3,10 +3,10 @@ ai/processor.py — Orchestrates the full document processing pipeline.
 
 Pipeline:
   1. Extract text (PyMuPDF / OCR)
-  2. Check SQLite cache (skip Gemini if already processed)
+  2. Check SQLite cache (skip Qwen if already processed)
   3. RAG: retrieve relevant legal context
-  4. Gemini: summarize + extract dates/amounts + translate
-  5. gTTS: generate audio
+  4. Qwen: summarize + extract dates/amounts + translate
+  5. Offline Windows speech: generate audio
   6. Store in SQLite, update job status
 """
 import json
@@ -18,8 +18,13 @@ from database.db import (
 )
 from extraction.extractor import extract_text
 from rag.retrieve import get_context_chunks
-from ai.gemini import call_gemini_json, call_gemini
-from ai.prompts import get_summary_prompt, get_followup_prompt, LEGAL_DISCLAIMER
+from ai.llm import call_llm_json, call_llm
+from ai.prompts import (
+    get_summary_prompt,
+    get_translation_prompt,
+    get_followup_prompt,
+    LEGAL_DISCLAIMER,
+)
 from audio.tts import generate_audio, build_audio_text
 
 
@@ -141,6 +146,31 @@ def ensure_extracted_amounts(summary: dict, extracted_text: str) -> dict:
     return summary
 
 
+def _has_selected_language(text: str, language: str) -> bool:
+    """Check that translated user-facing text contains the requested script."""
+    if language == "en":
+        return True
+    # Hindi and Marathi both use Devanagari.
+    return any("\u0900" <= char <= "\u097f" for char in text)
+
+
+def _translate_value_plain(value: object, language: str) -> object:
+    """Translate one summary value without relying on fragile JSON output."""
+    if not value:
+        return value
+    language_name = {"hi": "Hindi", "mr": "Marathi"}[language]
+    prompt = f"""
+Translate the following legal-summary text into {language_name}.
+Use Devanagari script. Return only the translation, with no explanation,
+quotation marks, JSON, or English sentences. Preserve names, dates, amounts,
+and legal terms accurately.
+
+TEXT:
+{value}
+"""
+    return call_llm(prompt, use_reasoning=False).strip()
+
+
 def update_job(
     job_id: str,
     status: str,
@@ -210,9 +240,67 @@ def process_document(job_id: str, file_path: str, language: str = "en"):
 
         update_job(job_id, "generating_summary")
 
-        # ── Step 4: Gemini summarization ──────────────────────────────────────
+        # ── Step 4: Qwen summarization ────────────────────────────────────────
         summary_prompt = get_summary_prompt(extracted_text[:4000], context_chunks[:3], language)
-        summary = call_gemini_json(summary_prompt, use_reasoning=False)
+        summary = call_llm_json(summary_prompt, use_reasoning=False)
+
+        # Qwen can occasionally return English despite the requested language.
+        # Translate the user-facing fields server-side before audio is created,
+        # so both the page and narration always use the selected language.
+        if language != "en":
+            translatable = {
+                "document_type": summary.get("document_type", ""),
+                "summary": summary.get("summary", {}),
+            }
+            translation_prompt = get_translation_prompt(
+                json.dumps(translatable, ensure_ascii=False), language
+            )
+            translated = None
+            for attempt in range(2):
+                try:
+                    retry_suffix = ""
+                    if attempt:
+                        retry_suffix = (
+                            f"\n\nCRITICAL: Return one complete valid JSON object in {language}. "
+                            "Use Devanagari text and do not echo English sentences."
+                        )
+                    candidate = call_llm_json(
+                        translation_prompt + retry_suffix,
+                        use_reasoning=False,
+                    )
+                    if _has_selected_language(
+                        json.dumps(candidate, ensure_ascii=False), language
+                    ):
+                        translated = candidate
+                        break
+                except RuntimeError as exc:
+                    print(f"[processor] Translation attempt {attempt + 1} failed: {exc}")
+
+            if translated:
+                summary["document_type"] = translated.get(
+                    "document_type", summary.get("document_type", "")
+                )
+                summary["summary"] = translated.get(
+                    "summary", summary.get("summary", {})
+                )
+            else:
+                # Retry field-by-field as plain text. This avoids malformed JSON
+                # responses and guarantees the audio source is translated too.
+                try:
+                    summary["document_type"] = _translate_value_plain(
+                        summary.get("document_type", ""), language
+                    )
+                    original_summary = summary.get("summary", {}) or {}
+                    translated_summary = {}
+                    for field in ("what_it_is", "what_it_means", "what_to_do"):
+                        translated_summary[field] = _translate_value_plain(
+                            original_summary.get(field, ""), language
+                        )
+                    summary["summary"] = translated_summary
+                except Exception as exc:
+                    # Keep the original valid summary and continue processing;
+                    # an optional translation failure must not break the job.
+                    print(f"[processor] Plain translation unavailable: {exc}")
         ensure_extracted_amounts(summary, extracted_text)
 
         # Add extraction metadata and store extracted text for follow-up Q&A
@@ -222,8 +310,13 @@ def process_document(job_id: str, file_path: str, language: str = "en"):
 
         update_job(job_id, "generating_audio")
 
-        # ── Step 5: gTTS audio ────────────────────────────────────────────────
+        # ── Step 5: Offline audio ──────────────────────────────────────────────
+        # Build narration only from the verified summary. Do not send a second
+        # free-form request to Qwen: it can produce a short or unrelated script
+        # that mentions arbitrary numbers instead of explaining the document.
         audio_text = build_audio_text(summary, language)
+        print(f"[processor] Audio narration prepared: {len(audio_text)} characters ({language})")
+        summary["audio_script"] = audio_text
         try:
             audio_filename = generate_audio(audio_text, language)
             summary["audio_filename"] = audio_filename
@@ -277,9 +370,9 @@ def answer_followup(question: str, job_id: str, session_id: str, language: str =
     ).fetchall()
     chat_history = [{"role": r["role"], "message": r["message"]} for r in reversed(history_rows)]
 
-    # Gemini
+    # Local/remote Qwen
     prompt = get_followup_prompt(question, context_chunks, original_text, chat_history, language)
-    answer = call_gemini(prompt, use_reasoning=True)
+    answer = call_llm(prompt, use_reasoning=True)
 
     # Store in history
     conn.execute(

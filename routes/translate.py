@@ -7,7 +7,7 @@ Dates, amounts, audio, and internal fields are passed through unchanged.
 import json
 from flask import Blueprint, request, jsonify
 from database.db import get_connection
-from ai.gemini import call_gemini_json
+from ai.llm import call_llm_json
 from ai.prompts import get_translation_prompt
 
 translate_bp = Blueprint("translate", __name__)
@@ -46,7 +46,7 @@ def translate_summary():
 
     try:
         prompt = get_translation_prompt(json.dumps(translatable, ensure_ascii=False), language)
-        translated = call_gemini_json(prompt, use_reasoning=False)
+        translated = call_llm_json(prompt, use_reasoning=False)
     except Exception as e:
         return jsonify({"error": f"Translation failed: {str(e)}"}), 500
 

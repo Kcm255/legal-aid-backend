@@ -27,6 +27,11 @@ try:
 except ImportError:
     PDF2IMAGE_AVAILABLE = False
 
+try:
+    import fitz  # type: ignore
+except ImportError:
+    fitz = None
+
 from config import TESSERACT_LANG
 
 
@@ -140,18 +145,29 @@ def extract_text_from_pdf_ocr(file_path: str | Path) -> str:
     Convert PDF pages to images (via pdf2image/Poppler) and OCR each page.
     Returns concatenated text from all pages.
     """
-    if not PDF2IMAGE_AVAILABLE:
-        raise ImportError(
-            "pdf2image is not installed. Install it with: pip install pdf2image\n"
-            "Also install Poppler:\n"
-            "  Linux:   sudo apt install poppler-utils\n"
-            "  Windows: https://github.com/oschwartz10612/poppler-windows/releases\n"
-            "  macOS:   brew install poppler"
-        )
-    pages = convert_from_path(str(file_path), dpi=200)
     text_parts = []
-    for page_img in pages:
-        img_array = np.array(page_img.convert("RGB"))
-        img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
-        text_parts.append(ocr_image_array(img_bgr))
+    if PDF2IMAGE_AVAILABLE:
+        pages = convert_from_path(str(file_path), dpi=200)
+        for page_img in pages:
+            img_array = np.array(page_img.convert("RGB"))
+            img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+            text_parts.append(ocr_image_array(img_bgr))
+    elif fitz is not None:
+        # PyMuPDF can rasterize pages without a separate Poppler install.
+        document = fitz.open(str(file_path))
+        try:
+            for page in document:
+                pixmap = page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
+                img_array = np.frombuffer(pixmap.samples, dtype=np.uint8).reshape(
+                    pixmap.height, pixmap.width, pixmap.n
+                )
+                if pixmap.n == 4:
+                    img_array = cv2.cvtColor(img_array, cv2.COLOR_RGBA2BGR)
+                else:
+                    img_array = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+                text_parts.append(ocr_image_array(img_array))
+        finally:
+            document.close()
+    else:
+        raise ImportError("Install pdf2image or PyMuPDF to OCR scanned PDFs.")
     return "\n\n".join(text_parts)

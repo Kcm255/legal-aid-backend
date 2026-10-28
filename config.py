@@ -1,11 +1,4 @@
-"""
-config.py — Central configuration for Rural Legal Aid Summarizer.
-
-NOTE (Free-Tier Privacy): Prompts sent to Gemini free tier may be used by Google
-to improve their models. Do NOT use this app for highly sensitive documents
-without upgrading to a paid Gemini API tier. To swap model/tier, change only the
-constants below.
-"""
+"""Central configuration for Rural Legal Aid Summarizer."""
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -31,25 +24,23 @@ DOCS_DIR     = BASE_DIR.parent / "legal_documents"
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024   # 16 MB — safe on 8 GB RAM
 ALLOWED_EXTENSIONS = {"pdf", "jpg", "jpeg", "png", "txt"}
 
-# ── Gemini — swap model/tier here only ────────────────────────────────────────
-# NOTE: Do NOT use gemini-2.5-flash — deprecated / intermittent outages.
-GEMINI_API_KEY           = os.getenv("GEMINI_API_KEY", "")
-GEMINI_SUMMARY_MODEL = "gemini-3.5-flash-lite"
-GEMINI_REASONING_MODEL = "gemini-3.5-flash-lite"   # follow-up Q&A / harder reasoning
-GEMINI_TEMPERATURE       = 0.2
-GEMINI_MAX_OUTPUT_TOKENS = 4096
-
-# ── Free-tier rate limiting ───────────────────────────────────────────────────
-GEMINI_RPM_LIMIT   = 15   # requests per minute (conservative free-tier estimate)
-GEMINI_MAX_RETRIES = 4
-GEMINI_BACKOFF_BASE = 2   # seconds; exponential: 2, 4, 8, 16 …
+# ── Local/remote Ollama Qwen server ──────────────────────────────────────────
+LLM_PROVIDER          = os.getenv("LLM_PROVIDER", "ollama").lower()
+LLM_MODEL             = os.getenv("LLM_MODEL", "qwen3:14b")
+# The model runs on the second device. This may be overridden in .env for a
+# different deployment, but a fresh checkout should use the working server.
+LLM_BASE_URL          = os.getenv("LLM_BASE_URL", "http://10.210.8.172:9050")
+LLM_TIMEOUT            = int(os.getenv("LLM_TIMEOUT", "180"))
+LLM_TEMPERATURE       = float(os.getenv("LLM_TEMPERATURE", "0.2"))
+LLM_MAX_OUTPUT_TOKENS = int(os.getenv("LLM_MAX_OUTPUT_TOKENS", "4096"))
+LLM_MAX_RETRIES       = int(os.getenv("LLM_MAX_RETRIES", "2"))
 
 # ── RAG / Embeddings ──────────────────────────────────────────────────────────
 EMBED_MODEL      = "BAAI/bge-small-en-v1.5"   # lightweight, avoids full PyTorch
 CHROMA_COLLECTION = "legal_documents"
 TOP_K_VECTOR     = 5    # results from ChromaDB
 TOP_K_BM25       = 5    # results from BM25 pass
-TOP_K_FINAL      = 5    # merged/re-ranked results sent to Gemini
+TOP_K_FINAL      = 5    # merged/re-ranked results sent to the local Qwen server
 
 # ── Languages supported ───────────────────────────────────────────────────────
 SUPPORTED_LANGUAGES = {
@@ -62,6 +53,7 @@ GTTS_LANG_MAP = {
     "hi": "hi",
     "mr": "mr",
 }
+AUDIO_PROVIDER = os.getenv("AUDIO_PROVIDER", "pyttsx3").lower()
 
 # ── OCR ───────────────────────────────────────────────────────────────────────
 TESSERACT_LANG = "eng+hin+mar"

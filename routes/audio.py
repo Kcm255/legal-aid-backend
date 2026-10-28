@@ -18,4 +18,5 @@ def serve_audio(filename: str):
     if not audio_path.exists():
         return jsonify({"error": "Audio file not found"}), 404
 
-    return send_from_directory(str(AUDIO_DIR), filename, mimetype="audio/mpeg")
+    mimetype = "audio/wav" if filename.lower().endswith(".wav") else "audio/mpeg"
+    return send_from_directory(str(AUDIO_DIR), filename, mimetype=mimetype)

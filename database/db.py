@@ -73,8 +73,9 @@ def init_db() -> None:
 
 
 def compute_content_hash(text: str, language: str) -> str:
-    """SHA-256 hash of extracted text + language, used as cache key."""
-    return hashlib.sha256(f"{language}::{text}".encode()).hexdigest()
+    """SHA-256 cache key, versioned when summary/audio behavior changes."""
+    cache_version = "summary-audio-v6"
+    return hashlib.sha256(f"{cache_version}::{language}::{text}".encode()).hexdigest()
 
 
 def get_cached_summary(content_hash: str):

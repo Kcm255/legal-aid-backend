@@ -1,5 +1,5 @@
 """
-ai/prompts.py — Prompt templates for Gemini API.
+ai/prompts.py — Prompt templates for the local Qwen legal assistant.
 """
 
 LEGAL_DISCLAIMER = """
@@ -33,6 +33,12 @@ def get_summary_prompt(extracted_text: str, context_chunks: list[str], language:
 You are an expert Indian Legal Aid Assistant.
 
 Your task is to explain the legal document in SIMPLE {lang_name}.
+
+MANDATORY LANGUAGE RULE:
+- Every user-facing value must be written in {lang_name}.
+- For Hindi or Marathi, do not write the summary values in English.
+- Translate the document type, summary sentences, action steps, and labels.
+- Keep proper names, dates, amounts, and legal section names accurate.
 
 Use ONLY the information present in:
 
@@ -136,10 +142,23 @@ def get_translation_prompt(summary_json: dict, target_language: str) -> str:
 
     lang_name = language_names.get(target_language, "English")
 
+    script_rule = (
+        "Use Devanagari script for Hindi. Do not copy English sentences."
+        if target_language == "hi"
+        else "Use Devanagari script for Marathi. Do not copy English sentences."
+        if target_language == "mr"
+        else ""
+    )
+
     return f"""
 Translate the following JSON into {lang_name}.
 
 Translate ONLY the values.
+
+This is a mandatory translation. Every human-readable value must be in {lang_name}.
+Do not leave English sentences in the output when the target language is Hindi or Marathi.
+{script_rule}
+Return translated sentences, not transliterations or the original English text.
 
 Do NOT translate the JSON keys.
 
@@ -150,6 +169,30 @@ Input:
 {summary_json}
 
 Return ONLY valid JSON.
+"""
+
+
+def get_audio_prompt(summary_json: dict, target_language: str) -> str:
+    """Create a short, natural spoken explanation of the structured summary."""
+    language_names = {
+        "en": "English",
+        "hi": "Hindi",
+        "mr": "Marathi",
+    }
+    lang_name = language_names.get(target_language, "English")
+    return f"""
+You are preparing an audio narration for a rural legal-aid user.
+
+Rewrite the summary below as one clear, natural spoken explanation in {lang_name}.
+The narration must be entirely in {lang_name}; do not use English headings, labels,
+or filler words. Keep proper names, dates, amounts, and legal section names accurate.
+Explain what the document is about, what it means for the person, and the most
+important next step. Do not mechanically read every field, list, party, date, or
+amount. Do not mention that you are rewriting JSON. Keep it to 80-140 words and
+return only the narration as plain text, with no markdown or bullet points.
+
+SUMMARY JSON:
+{summary_json}
 """
 
 
@@ -191,6 +234,12 @@ Answer ONLY using:
 Do not invent legal facts.
 
 Language: {lang_name}
+
+MANDATORY LANGUAGE RULE:
+- Write the entire answer in {lang_name}.
+- Do not answer in English when the requested language is Hindi or Marathi.
+- Translate headings, labels, explanations, and action steps too. Keep only proper
+  names, document titles, legal section names, and unavoidable abbreviations unchanged.
 
 =====================
 LEGAL CONTEXT
